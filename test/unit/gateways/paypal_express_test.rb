@@ -96,6 +96,24 @@ class PaypalExpressTest < Test::Unit::TestCase
     assert_not_nil response.authorization
     assert response.test?
   end
+
+  def test_purchase
+    @gateway.expects(:ssl_post).returns(successful_purchase_response)
+    response = @gateway.purchase(300, :token => 'EC-6WS104951Y388951L', :payer_id => 'FWRVKNRRZ3WUC')
+    assert response.success?
+    assert response.complete?
+    assert_not_nil response.authorization
+    assert response.test?
+  end
+
+  def test_pending_purchase
+    @gateway.expects(:ssl_post).returns(successful_pending_purchase_response)
+    response = @gateway.purchase(300, :token => 'EC-6WS104951Y388951L', :payer_id => 'FWRVKNRRZ3WUC')
+    assert response.success?
+    assert !response.complete?
+    assert_not_nil response.authorization
+    assert response.test?
+  end
   
   def test_default_payflow_currency
     assert_equal 'USD', PayflowExpressGateway.default_currency
@@ -379,4 +397,96 @@ class PaypalExpressTest < Test::Unit::TestCase
   </SOAP-ENV:Envelope>
       RESPONSE
     end  
+
+    def successful_purchase_response
+      <<-RESPONSE
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:cc="urn:ebay:apis:CoreComponentTypes" xmlns:wsu="http://schemas.xmlsoap.org/ws/2002/07/utility" xmlns:saml="urn:oasis:names:tc:SAML:1.0:assertion" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:wsse="http://schemas.xmlsoap.org/ws/2002/12/secext" xmlns:ebl="urn:ebay:apis:eBLBaseComponents" xmlns:ns="urn:ebay:api:PayPalAPI">
+  <SOAP-ENV:Header>
+    <Security xmlns="http://schemas.xmlsoap.org/ws/2002/12/secext" xsi:type="wsse:SecurityType"></Security>
+    <RequesterCredentials xmlns="urn:ebay:api:PayPalAPI" xsi:type="ebl:CustomSecurityHeaderType">
+      <Credentials xmlns="urn:ebay:apis:eBLBaseComponents" xsi:type="ebl:UserIdPasswordType">
+        <Username xsi:type="xs:string"></Username>
+        <Password xsi:type="xs:string"></Password>
+        <Signature xsi:type="xs:string">A0asK6oiIZmtBFrRCq-Iiqf8lrk.ARmJoCHYLJFJvX.TGJrzNLipxUFp</Signature><Subject xsi:type="xs:string"></Subject>
+      </Credentials>
+    </RequesterCredentials>
+  </SOAP-ENV:Header>
+  <SOAP-ENV:Body id="_0">
+    <DoExpressCheckoutPaymentResponse xmlns="urn:ebay:api:PayPalAPI">
+      <Timestamp xmlns="urn:ebay:apis:eBLBaseComponents">2008-09-22T18:57:40Z</Timestamp>
+      <Ack xmlns="urn:ebay:apis:eBLBaseComponents">Success</Ack>
+      <CorrelationID xmlns="urn:ebay:apis:eBLBaseComponents">73caae9a626f1</CorrelationID>
+      <Version xmlns="urn:ebay:apis:eBLBaseComponents">2.0</Version>
+      <Build xmlns="urn:ebay:apis:eBLBaseComponents">690663</Build>
+      <DoExpressCheckoutPaymentResponseDetails xmlns="urn:ebay:apis:eBLBaseComponents" xsi:type="ebl:DoExpressCheckoutPaymentResponseDetailsType">
+        <Token xsi:type="ebl:ExpressCheckoutTokenType">EC-17C60629GH2204247</Token>
+        <PaymentInfo xsi:type="ebl:PaymentInfoType">
+          <TransactionID>2VW129311E418523N</TransactionID>
+          <ParentTransactionID xsi:type="ebl:TransactionId"></ParentTransactionID>
+          <ReceiptID></ReceiptID>
+          <TransactionType xsi:type="ebl:PaymentTransactionCodeType">express-checkout</TransactionType>
+          <PaymentType xsi:type="ebl:PaymentCodeType">instant</PaymentType>
+          <PaymentDate xsi:type="xs:dateTime">2008-09-22T18:57:38Z</PaymentDate>
+          <GrossAmount xsi:type="cc:BasicAmountType" currencyID="CAD">29.77</GrossAmount>
+          <FeeAmount xsi:type="cc:BasicAmountType" currencyID="CAD">1.01</FeeAmount>
+          <SettleAmount xsi:type="cc:BasicAmountType" currencyID="CAD">30.15</SettleAmount>
+          <TaxAmount xsi:type="cc:BasicAmountType" currencyID="CAD">0.00</TaxAmount>
+          <ExchangeRate xsi:type="xs:string">1.05373</ExchangeRate>
+          <PaymentStatus xsi:type="ebl:PaymentStatusCodeType">Completed</PaymentStatus>
+          <PendingReason xsi:type="ebl:PendingStatusCodeType">none</PendingReason>
+          <ReasonCode xsi:type="ebl:ReversalReasonCodeType">none</ReasonCode>
+        </PaymentInfo>
+      </DoExpressCheckoutPaymentResponseDetails>
+    </DoExpressCheckoutPaymentResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+      RESPONSE
+    end
+
+    def successful_pending_purchase_response
+      <<-RESPONSE
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:cc="urn:ebay:apis:CoreComponentTypes" xmlns:wsu="http://schemas.xmlsoap.org/ws/2002/07/utility" xmlns:saml="urn:oasis:names:tc:SAML:1.0:assertion" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:wsse="http://schemas.xmlsoap.org/ws/2002/12/secext" xmlns:ebl="urn:ebay:apis:eBLBaseComponents" xmlns:ns="urn:ebay:api:PayPalAPI">
+  <SOAP-ENV:Header>
+    <Security xmlns="http://schemas.xmlsoap.org/ws/2002/12/secext" xsi:type="wsse:SecurityType"></Security>
+    <RequesterCredentials xmlns="urn:ebay:api:PayPalAPI" xsi:type="ebl:CustomSecurityHeaderType">
+      <Credentials xmlns="urn:ebay:apis:eBLBaseComponents" xsi:type="ebl:UserIdPasswordType">
+        <Username xsi:type="xs:string"></Username>
+        <Password xsi:type="xs:string"></Password>
+        <Signature xsi:type="xs:string">A0asK6oiIZmtBFrRCq-Iiqf8lrk.ARmJoCHYLJFJvX.TGJrzNLipxUFp</Signature><Subject xsi:type="xs:string"></Subject>
+      </Credentials>
+    </RequesterCredentials>
+  </SOAP-ENV:Header>
+  <SOAP-ENV:Body id="_0">
+    <DoExpressCheckoutPaymentResponse xmlns="urn:ebay:api:PayPalAPI">
+      <Timestamp xmlns="urn:ebay:apis:eBLBaseComponents">2008-09-22T18:57:40Z</Timestamp>
+      <Ack xmlns="urn:ebay:apis:eBLBaseComponents">Success</Ack>
+      <CorrelationID xmlns="urn:ebay:apis:eBLBaseComponents">73caae9a626f1</CorrelationID>
+      <Version xmlns="urn:ebay:apis:eBLBaseComponents">2.0</Version>
+      <Build xmlns="urn:ebay:apis:eBLBaseComponents">690663</Build>
+      <DoExpressCheckoutPaymentResponseDetails xmlns="urn:ebay:apis:eBLBaseComponents" xsi:type="ebl:DoExpressCheckoutPaymentResponseDetailsType">
+        <Token xsi:type="ebl:ExpressCheckoutTokenType">EC-17C60629GH2204247</Token>
+        <PaymentInfo xsi:type="ebl:PaymentInfoType">
+          <TransactionID>2VW129311E418523N</TransactionID>
+          <ParentTransactionID xsi:type="ebl:TransactionId"></ParentTransactionID>
+          <ReceiptID></ReceiptID>
+          <TransactionType xsi:type="ebl:PaymentTransactionCodeType">express-checkout</TransactionType>
+          <PaymentType xsi:type="ebl:PaymentCodeType">instant</PaymentType>
+          <PaymentDate xsi:type="xs:dateTime">2008-09-22T18:57:38Z</PaymentDate>
+          <GrossAmount xsi:type="cc:BasicAmountType" currencyID="CAD">29.77</GrossAmount>
+          <FeeAmount xsi:type="cc:BasicAmountType" currencyID="CAD">1.01</FeeAmount>
+          <SettleAmount xsi:type="cc:BasicAmountType" currencyID="CAD">30.15</SettleAmount>
+          <TaxAmount xsi:type="cc:BasicAmountType" currencyID="CAD">0.00</TaxAmount>
+          <ExchangeRate xsi:type="xs:string">1.05373</ExchangeRate>
+          <PaymentStatus xsi:type="ebl:PaymentStatusCodeType">Pending</PaymentStatus>
+          <PendingReason xsi:type="ebl:PendingStatusCodeType">echeck</PendingReason>
+          <ReasonCode xsi:type="ebl:ReversalReasonCodeType">none</ReasonCode>
+        </PaymentInfo>
+      </DoExpressCheckoutPaymentResponseDetails>
+    </DoExpressCheckoutPaymentResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+      RESPONSE
+    end
 end
