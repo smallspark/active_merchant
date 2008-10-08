@@ -169,8 +169,13 @@ module ActiveMerchant #:nodoc:
               unless [:cancel, :inquiry].include?(action)
                 xml.tag! 'RPData' do
                   xml.tag! 'Name', options[:name] unless options[:name].nil?
-                  xml.tag! 'TotalAmt', amount(money), 'Currency' => options[:currency] || currency(money)
-                  xml.tag! 'PayPeriod', get_pay_period(options)
+                  if [:modify].include?(action)
+                    xml.tag! 'TotalAmt', amount(money), 'Currency' => options[:currency] || currency(money) unless money.nil? || money == 0
+                    xml.tag! 'PayPeriod', get_pay_period(options) unless options[:periodicity].nil?
+                  else
+                    xml.tag! 'TotalAmt', amount(money), 'Currency' => options[:currency] || currency(money)
+                    xml.tag! 'PayPeriod', get_pay_period(options)
+                  end
                   xml.tag! 'Term', options[:payments] unless options[:payments].nil?
                   xml.tag! 'Comment', options[:comment] unless options[:comment].nil?
                 
