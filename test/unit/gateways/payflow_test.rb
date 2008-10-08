@@ -163,6 +163,7 @@ class PayflowTest < Test::Unit::TestCase
     assert_equal 'RT0000000009', response.profile_id
     assert response.test?
     assert_equal "R7960E739F80", response.authorization
+    assert_equal "test@test.com", response.e_mail
   end
   
   def test_recurring_profile_payment_history_inquiry
@@ -226,7 +227,7 @@ class PayflowTest < Test::Unit::TestCase
   <Partner>paypal</Partner>
   <RPRef>R7960E739F80</RPRef>
   <Vendor>ActiveMerchant</Vendor>
-  <Email>test@test.com</Email>
+  <EMail>test@test.com</EMail>
   <ProfileId>RT0000000009</ProfileId>
 </ResponseData>
   XML
