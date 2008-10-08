@@ -158,8 +158,6 @@ class PayflowTest < Test::Unit::TestCase
     
     response = @gateway.recurring(0, nil, {:profile_id => 'RT0000000009', :email => 'test@test.com'})
 
-puts response.inspect
-     
     assert_instance_of PayflowResponse, response
     assert_success response
     assert_equal 'RT0000000009', response.profile_id
