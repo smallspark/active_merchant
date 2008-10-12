@@ -88,6 +88,28 @@ class QuickpayTest < Test::Unit::TestCase
     assert_equal  [ :dankort, :forbrugsforeningen, :visa, :master, :american_express, :diners_club, :jcb, :maestro ], QuickpayGateway.supported_cardtypes
   end
   
+  #Tests storing credit card information with Quickpay
+  def test_store
+    @gateway.expects(:ssl_post).returns(successful_store_response)
+    
+    response = @gateway.store(@credit_card, :description => 'fiddle', :order_id => 'wobble')
+    
+    assert response.success?
+    assert_equal 'OK', response.message
+    assert_equal '42', response.authorization    
+  end  
+  
+  def test_release
+    @gateway.expects(:ssl_post).returns(successful_release_response)
+  
+    response = @gateway.void(42)
+  
+    assert response.success?
+    assert_equal 'OK', response.message
+  
+    assert_equal '42', response.authorization    
+  end
+      
   private
   
   def error_response
@@ -105,7 +127,15 @@ class QuickpayTest < Test::Unit::TestCase
   def successful_capture_response
     '<?xml version="1.0" encoding="ISO-8859-1"?><values msgtype="1230" amount="100" time="080107061755" pbsstat="000" qpstat="000" qpstatmsg="OK" currency="DKK" ordernum="4820346075804536193" transaction="2865261" merchant="Shopify" merchantemail="pixels@jadedpixel.com" />'
   end
+
+  def successful_store_response
+    '<?xml version="1.0" encoding="ISO-8859-1"?><values msgtype="1110" amount="100" time="050810144504" ordernum="4620" pbsstat="000" qpstat="000" qpstatmsg="OK" merchantemail="test@quickpay.dk" merchant="Test firma" currency="DKK" transaction="42" cardtype="MasterCard-DK" />'
+  end
   
+  def successful_release_response
+    '<?xml version="1.0" encoding="ISO-8859-1"?><values msgtype="1430" amount="100" time="050810145441" pbsstat="000" qpstat="000" qpstatmsg="OK" currency="DKK" ordernum="4620" transaction="42" merchant="Test merchant" merchantemail="test@quickpay.dk" />'
+  end  
+    
   def failed_authorization_response
     '<?xml version="1.0" encoding="ISO-8859-1"?><values qpstat="008" qpstatmsg="Missing/error in card verification data" />'
   end

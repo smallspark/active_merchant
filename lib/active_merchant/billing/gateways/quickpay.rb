@@ -16,8 +16,9 @@ module ActiveMerchant #:nodoc:
       TRANSACTIONS = {
         :authorization => '1100',
         :capture       => '1220',
-        :void          => '1420',
-        :credit        => 'credit'
+        :void          => '1420', #In Quickpay terminology, this is the 'reversal' transaction
+        :credit        => 'credit',
+        :status        => 'pbsstatus'
       }
       
       POS_CODES = {
@@ -29,16 +30,27 @@ module ActiveMerchant #:nodoc:
         :internet_recurring => 'K00540K00130' 
       }
       
+      STATUS_CODES = {
+        :approved               => '000',
+        :rejected_pbs           => '001',
+        :communication_error    => '002',
+        :card_expired           => '003',
+        :invalid_status         => '004',
+        :authorization_expired  => '005',
+        :error_at_pbs           => '006',
+        :error_at_quickpay      => '007',
+        :error_in_parameters    => '008'
+      }
+      
       MD5_CHECK_FIELDS = {
         :authorization    => [:msgtype, :cardnumber, :amount, :expirationdate, :posc, :ordernum, :currency, :cvd, :merchant, :authtype, :reference, :transaction],
         :capture => [:msgtype, :amount, :merchant, :transaction],
         :void    => [:msgtype, :merchant, :transaction],
-        :credit  => [:msgtype, :amount, :merchant, :transaction]
+        :credit  => [:msgtype, :amount, :merchant, :transaction],
+        :status  => [:msgtype, :merchant]
       }
       
       CURRENCIES = [ 'DKK', 'EUR', 'NOK', 'GBP', 'USD' ]
-      
-      APPROVED = '000'
       
       # The login is the QuickpayId
       # The password is the md5checkword from the Quickpay admin interface
@@ -47,20 +59,20 @@ module ActiveMerchant #:nodoc:
         @options = options
         super
       end  
-      
-      def authorize(money, creditcard, options = {})
-        post = {}
-        
-        add_amount(post, money, options)
-        add_creditcard(post, creditcard)        
-        add_invoice(post, options)
 
-        commit(:authorization, post)
+      #Authorizes a charge for the given creditcard or billing_id
+      def authorize(money, creditcard_or_billing_id, options = {})
+        if creditcard_or_billing_id.is_a?(String)
+          authorize_stored_agreement(money, creditcard_or_billing_id, options)
+        else
+          authorize_creditcard_agreement(money, creditcard_or_billing_id, options)
+        end  
       end
-      
-      def purchase(money, creditcard, options = {})
-        auth = authorize(money, creditcard, options)
-        auth.success? ? capture(money, auth.authorization) : auth
+              
+      #Authorizes a charge for the given creditcard or billing_id and executes a capture
+      def purchase(money, creditcard_or_billing_id, options = {})
+        auth = authorize(money, creditcard_or_billing_id, options)
+        auth.success? ? capture(money, auth.authorization, options) : auth
       end                       
     
       def capture(money, authorization, options = {})
@@ -72,6 +84,31 @@ module ActiveMerchant #:nodoc:
         commit(:capture, post)
       end
       
+      #Stores the credit card information at the gateway, creating an account for future charges. The id returned in the
+      #response (response.authorization) must be stored by you for usage in subsequent authorizations and captures for
+      #the newly created account.
+      #
+      #In order to later identify this account within the Quickpay admin interface, it's recommended
+      #to also set a reference text. For example:
+      #
+      #   reference = "Account #{@account.id}"
+      #   response  = gw.store(creditcard, :description => reference, :order_id => reference)
+      #   Account.update(@account.id, :gw_billing_id => response.authorization)
+      #
+      def store(creditcard, options = {})
+        post  = {}
+        
+        add_amount(post, 100, options) #1 DKK
+        add_authtype(post, 'preauth')
+        add_creditcard(post, creditcard)
+        add_invoice(post, options)
+        add_reference_text(post, options)
+
+        commit(:authorization, post)             
+      end  
+      
+      #Cancels the account at Quickpay by sending a reversal with the transaction
+      #id returned by the store call which initialized the account
       def void(identification, options = {})
         post = {}
         
@@ -79,6 +116,11 @@ module ActiveMerchant #:nodoc:
         
         commit(:void, post)
       end
+      
+      def status
+        post = {}
+        commit(:status, post)
+      end  
       
       def credit(money, identification, options = {})
         post = {}
@@ -107,10 +149,43 @@ module ActiveMerchant #:nodoc:
         post[:expirationdate] = expdate(credit_card) 
       end
       
+      def add_authtype(post, authtype)
+        post[:authtype] = authtype
+      end  
+      
       def add_reference(post, identification)
         post[:transaction] = identification
       end
       
+      def add_reference_text(post, options)
+        post[:reference] = options[:description]
+      end  
+      
+      def authorize_creditcard_agreement(money, creditcard, options)
+        post = {}
+        
+        add_amount(post, money, options)
+        add_creditcard(post, creditcard)        
+        add_invoice(post, options)
+
+        commit(:authorization, post)
+      end
+      
+      #Use this method to authorize a capture for a stored account. The creditcard must have been initialized once 
+      #using store() prior to using this method.
+      #
+      #This method gets called by the authorize method which distinguishes between stored accounts and credit cards.
+      def authorize_stored_agreement(money, billing_id, options)
+        post = {}
+
+        add_amount(post, money, options)
+        add_authtype(post, 'recurring')
+        add_invoice(post, options)
+        add_reference(post, billing_id)
+
+        commit(:authorization, post)             
+      end
+
       def commit(action, params)
         response = parse(ssl_post(URL, post_data(action, params)))
         
@@ -121,7 +196,7 @@ module ActiveMerchant #:nodoc:
       end
       
       def successful?(response)
-        response[:qpstat] == APPROVED
+        response[:qpstat] == STATUS_CODES[:approved]
       end
 
       def parse(data)
@@ -137,8 +212,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def message_from(response)
-        case response[:qpstat]
-        when '008'
+        if response[:qpstat] == STATUS_CODES[:error_in_parameters] && response[:qpstatmsg].to_s =~ /[a-z][A-Z]/
           response[:qpstatmsg].to_s.scan(/[A-Z][a-z0-9 \/]+/).to_sentence
         else
           response[:qpstatmsg].to_s
