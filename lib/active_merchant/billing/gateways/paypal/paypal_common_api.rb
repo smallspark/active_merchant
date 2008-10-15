@@ -148,7 +148,7 @@ module ActiveMerchant #:nodoc:
             xml.tag! 'n2:Version', API_VERSION
             xml.tag! 'TransactionID', identification
             xml.tag! 'Amount', amount(money), 'currencyID' => options[:currency] || currency(money)
-            xml.tag! 'RefundType', 'Partial'
+            xml.tag! 'RefundType', %w(Full Partial Other).detect {|x| x == options[:type] } || 'Partial'
             xml.tag! 'Memo', options[:note] unless options[:note].blank?
           end
         end
