@@ -54,9 +54,14 @@ module ActiveMerchant #:nodoc:
         xml.target!
       end
       
+      def validate_sale_or_authorization_options!(options)
+        raise(":invoice_id must be no more than 127 characters long") if options[:invoice_id].to_s.length > 127
+      end
+
       def build_sale_or_authorization_request(action, money, options)
         currency_code = options[:currency] || currency(money)
-        
+        validate_sale_or_authorization_options!(options)
+
         xml = Builder::XmlMarkup.new :indent => 2
         xml.tag! 'DoExpressCheckoutPaymentReq', 'xmlns' => PAYPAL_NAMESPACE do
           xml.tag! 'DoExpressCheckoutPaymentRequest', 'xmlns:n2' => EBAY_NAMESPACE do
@@ -76,6 +81,7 @@ module ActiveMerchant #:nodoc:
                   xml.tag! 'n2:TaxTotal', amount(options[:tax]), 'currencyID' => currency_code
                 end
                 
+                xml.tag! 'n2:InvoiceID', options[:invoice_id] unless options[:invoice_id].blank?
                 xml.tag! 'n2:NotifyURL', options[:notify_url]
                 xml.tag! 'n2:ButtonSource', application_id.to_s.slice(0,32) unless application_id.blank?
               end

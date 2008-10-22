@@ -155,6 +155,31 @@ class PaypalExpressTest < Test::Unit::TestCase
     xml = REXML::Document.new(@gateway.send(:build_sale_or_authorization_request, 'Test', 100, {}))
     assert_equal 'ActiveMerchant_EC', REXML::XPath.first(xml, '//n2:ButtonSource').text
   end
+
+  def test_invoice_id_can_be_included_in_sale_or_authorization_request  
+    xml = REXML::Document.new(@gateway.send(:build_sale_or_authorization_request, 'Test', 100, {:invoice_id => '12345'}))
+    assert_equal '12345', REXML::XPath.first(xml, '//n2:InvoiceID').text
+  end
+
+  def test_invoice_id_element_is_not_included_in_sale_or_authorization_request_if_option_not_provided
+    xml = REXML::Document.new(@gateway.send(:build_sale_or_authorization_request, 'Test', 100, {}))
+    assert_nil REXML::XPath.first(xml, '//n2:InvoiceID')
+  end
+
+  def test_raises_for_invoice_id_that_is_longer_than_127_chars
+    assert_nothing_raised do  
+      @gateway.send(:build_sale_or_authorization_request, 'Test', 100, {:invoice_id => 'A' * 127})
+    end
+    assert_raise(RuntimeError) do
+      @gateway.send(:build_sale_or_authorization_request, 'Test', 100, {:invoice_id => 'A' * 128})
+    end
+  end
+
+  def test_do_not_raises_for_non_alphanumeric_invoice_id_until_we_figure_out_what_paypal_actually_means_when_they_say_alphanumeric
+    assert_nothing_raised do
+      @gateway.send(:build_sale_or_authorization_request, 'Test', 100, {:invoice_id => 'a$%^&'})
+    end
+  end
   
   def test_error_code_for_single_error 
     @gateway.expects(:ssl_post).returns(response_with_error)
