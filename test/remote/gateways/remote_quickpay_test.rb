@@ -1,5 +1,22 @@
 require File.dirname(__FILE__) + '/../../test_helper'
 
+if false #Set to true to see traffic against Quickpay on stdout
+  module ActiveMerchant
+    module PostsData
+      def ssl_post_with_logging(url, data, headers = {})
+        print "REQUEST", "\n", data, "\n"
+        result = ssl_post_without_logging(url, data, headers)
+        print "RESPONSE", "\n", result, "\n"
+
+        result
+      end
+
+      alias_method :ssl_post_without_logging, :ssl_post
+      alias_method :ssl_post, :ssl_post_with_logging
+    end
+  end
+end
+
 class RemoteQuickpayTest < Test::Unit::TestCase
   def setup  
     @gateway = QuickpayGateway.new(fixtures(:quickpay))
@@ -26,6 +43,17 @@ class RemoteQuickpayTest < Test::Unit::TestCase
     # forbrugsforeningen doesn't use a verification value
     @forbrugsforeningen = credit_card('6007221000000000', :verification_value => nil)
   end
+
+  #The active merchant generate_order_id in the test_helper generates id's that in cases are more than
+  #the 20 char maximum defined by Quickpay
+  def generate_order_id
+    (Time.now.to_f * 10000).to_i
+  end
+    
+  def test_status
+    assert response = @gateway.status
+    assert_equal 'PBS status OK', response.message    
+  end  
   
   def test_successful_purchase
     assert response = @gateway.purchase(@amount, @visa, @options)
@@ -179,4 +207,65 @@ class RemoteQuickpayTest < Test::Unit::TestCase
     assert_equal 'Missing/error in merchant', response.message
     assert_failure response
   end
+  
+  def test_store
+    order_id = generate_order_id
+    amount   = @amount
+  
+    assert init = @gateway.store(@visa_dankort, { :description => 'Some description', :order_id => order_id })
+    assert init.success?
+    assert_equal 'OK', init.message
+    assert init.authorization
+  
+    assert auth = @gateway.authorize(amount, init.authorization, { :order_id => order_id + 1 })
+    assert auth.success?
+    assert_equal 'OK', auth.message
+    assert auth.authorization
+  
+    assert capture = @gateway.capture(amount, auth.authorization)
+    assert capture.success?
+    assert_equal 'OK', capture.message  
+  
+    assert release = @gateway.void(init.authorization)
+    assert release.success?
+    assert_equal 'OK', release.message
+  
+    #Now that the release method has been executed, authorize must fail
+    assert auth2 = @gateway.authorize(amount, init.authorization, { :order_id => order_id + 2 })
+    assert !auth2.success?
+    assert_equal 'Transaction not found', auth2.message    
+  
+    assert capt2 = @gateway.capture(amount, auth2.authorization)
+    assert !capt2.success?
+    assert_equal 'Missing/error in transaction number', capt2.message      
+  end  
+  
+  def test_purchase_by_stored_billing_id
+    order_id = generate_order_id
+    amount   = @amount
+  
+    assert init = @gateway.store(@visa_dankort, { :description => 'Some description', :order_id => order_id })
+    assert init.success?
+    assert_equal 'OK', init.message
+    assert init.authorization
+  
+    assert purchase = @gateway.purchase(amount, init.authorization, { :order_id => order_id + 1 })
+    assert purchase.success?
+    assert_equal 'OK', purchase.message
+  end
+  
+  def test_unsuccessful_purchase_by_stored_billing_id
+    order_id = generate_order_id
+    amount   = @amount
+  
+    assert init = @gateway.store(@visa_dankort, { :description => 'Some description', :order_id => order_id })
+    assert init.success?
+    assert_equal 'OK', init.message
+    assert init.authorization
+  
+    assert purchase = @gateway.purchase(amount, 'invalid_billing_id', { :order_id => order_id + 1 })
+    assert !purchase.success?
+    assert_equal 'Missing/error in transaction number', purchase.message
+  end
+    
 end
