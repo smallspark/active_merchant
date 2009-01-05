@@ -1,4 +1,10 @@
+require 'rubygems'
+
+gem 'soap4r'
+
 require 'rexml/document'
+require File.dirname(__FILE__) + '/eway/rebill'
+require File.dirname(__FILE__) + '/eway/managed'
 
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
@@ -14,10 +20,10 @@ module ActiveMerchant #:nodoc:
     # Next, create a credit card object using a TC approved test card.
     #
     #   creditcard = ActiveMerchant::Billing::CreditCard.new(
-    #	    :number => '4111111111111111',
-    #	    :month => 8,
-    #	    :year => 2006,
-    #	    :first_name => 'Longbob',
+    #     :number => '4111111111111111',
+    #     :month => 8,
+    #     :year => 2006,
+    #     :first_name => 'Longbob',
     #     :last_name => 'Longsen'
     #   )
     #   options = {
@@ -34,6 +40,7 @@ module ActiveMerchant #:nodoc:
     #
     # To finish setting up, create the active_merchant object you will be using, with the eWay gateway. If you have a
     # functional eWay account, replace :login with your account info. 
+  # include the :engine option to select rebill or managed payments
     #
     #   gateway = ActiveMerchant::Billing::Base.gateway(:eway).new(:login => '87654321')
     #
@@ -59,7 +66,7 @@ module ActiveMerchant #:nodoc:
     # This should be enough to get you started with eWay and active_merchant. For further information, review the methods
     # below and the rest of active_merchant's documentation.
 
-    class EwayGateway < Gateway 
+    class EwayGateway < Gateway
       TEST_URL     = 'https://www.eway.com.au/gateway/xmltest/testpage.asp'
       LIVE_URL     = 'https://www.eway.com.au/gateway/xmlpayment.asp'
       
@@ -69,77 +76,80 @@ module ActiveMerchant #:nodoc:
       MESSAGES = {
         "00" => "Transaction Approved",
         "01" => "Refer to Issuer",
-        "02" => "Refer to Issuer, special",	
+        "02" => "Refer to Issuer, special", 
         "03" => "No Merchant",
-        "04" => "Pick Up Card",	
-        "05" => "Do Not Honour",	
+        "04" => "Pick Up Card", 
+        "05" => "Do Not Honour",  
         "06" => "Error",
-        "07" => "Pick Up Card, Special",	
-        "08" => "Honour With Identification",	
+        "07" => "Pick Up Card, Special",  
+        "08" => "Honour With Identification", 
         "09" => "Request In Progress",
-        "10" => "Approved For Partial Amount",	
-        "11" => "Approved, VIP",	
-        "12" => "Invalid Transaction",	
+        "10" => "Approved For Partial Amount",  
+        "11" => "Approved, VIP",  
+        "12" => "Invalid Transaction",  
         "13" => "Invalid Amount",
-        "14" => "Invalid Card Number",	
-        "15" => "No Issuer",	
-        "16" => "Approved, Update Track 3",	
-        "19" => "Re-enter Last Transaction",	
-        "21" => "No Action Taken",	
-        "22" => "Suspected Malfunction",	
-        "23" => "Unacceptable Transaction Fee",	
-        "25" => "Unable to Locate Record On File",	
-        "30" => "Format Error",	
-        "31" => "Bank Not Supported By Switch",	
-        "33" => "Expired Card, Capture",	
-        "34" => "Suspected Fraud, Retain Card",	
-        "35" => "Card Acceptor, Contact Acquirer, Retain Card",	
-        "36" => "Restricted Card, Retain Card",	
-        "37" => "Contact Acquirer Security Department, Retain Card",	
-        "38" => "PIN Tries Exceeded, Capture",	
-        "39" => "No Credit Account",	
-        "40" => "Function Not Supported",	
-        "41" => "Lost Card",	
-        "42" => "No Universal Account",	
-        "43" => "Stolen Card",	
-        "44" => "No Investment Account",	
-        "51" => "Insufficient Funds",	
-        "52" => "No Cheque Account",	
-        "53" => "No Savings Account",	
-        "54" => "Expired Card",	
-        "55" => "Incorrect PIN",	
-        "56" => "No Card Record",	
-        "57" => "Function Not Permitted to Cardholder",	
-        "58" => "Function Not Permitted to Terminal",	
-        "59" => "Suspected Fraud",	
-        "60" => "Acceptor Contact Acquirer",	
-        "61" => "Exceeds Withdrawal Limit",	
-        "62" => "Restricted Card",	
-        "63" => "Security Violation",	
-        "64" => "Original Amount Incorrect",	
-        "66" => "Acceptor Contact Acquirer, Security",	
-        "67" => "Capture Card",	
-        "75" => "PIN Tries Exceeded",	
-        "82" => "CVV Validation Error",	
-        "90" => "Cutoff In Progress",	
-        "91" => "Card Issuer Unavailable",	
-        "92" => "Unable To Route Transaction",	
-        "93" => "Cannot Complete, Violation Of The Law",	
-        "94" => "Duplicate Transaction",	
+        "14" => "Invalid Card Number",  
+        "15" => "No Issuer",  
+        "16" => "Approved, Update Track 3", 
+        "19" => "Re-enter Last Transaction",  
+        "21" => "No Action Taken",  
+        "22" => "Suspected Malfunction",  
+        "23" => "Unacceptable Transaction Fee", 
+        "25" => "Unable to Locate Record On File",  
+        "30" => "Format Error", 
+        "31" => "Bank Not Supported By Switch", 
+        "33" => "Expired Card, Capture",  
+        "34" => "Suspected Fraud, Retain Card", 
+        "35" => "Card Acceptor, Contact Acquirer, Retain Card", 
+        "36" => "Restricted Card, Retain Card", 
+        "37" => "Contact Acquirer Security Department, Retain Card",  
+        "38" => "PIN Tries Exceeded, Capture",  
+        "39" => "No Credit Account",  
+        "40" => "Function Not Supported", 
+        "41" => "Lost Card",  
+        "42" => "No Universal Account", 
+        "43" => "Stolen Card",  
+        "44" => "No Investment Account",  
+        "51" => "Insufficient Funds", 
+        "52" => "No Cheque Account",  
+        "53" => "No Savings Account", 
+        "54" => "Expired Card", 
+        "55" => "Incorrect PIN",  
+        "56" => "No Card Record", 
+        "57" => "Function Not Permitted to Cardholder", 
+        "58" => "Function Not Permitted to Terminal", 
+        "59" => "Suspected Fraud",  
+        "60" => "Acceptor Contact Acquirer",  
+        "61" => "Exceeds Withdrawal Limit", 
+        "62" => "Restricted Card",  
+        "63" => "Security Violation", 
+        "64" => "Original Amount Incorrect",  
+        "66" => "Acceptor Contact Acquirer, Security",  
+        "67" => "Capture Card", 
+        "75" => "PIN Tries Exceeded", 
+        "82" => "CVV Validation Error", 
+        "90" => "Cutoff In Progress", 
+        "91" => "Card Issuer Unavailable",  
+        "92" => "Unable To Route Transaction",  
+        "93" => "Cannot Complete, Violation Of The Law",  
+        "94" => "Duplicate Transaction",  
         "96" => "System Error"
       }
+
+      include ActiveMerchant::Billing::EwayRebill 
+      include ActiveMerchant::Billing::EwayManaged
       
-	    self.money_format = :cents
+      self.money_format = :cents
       self.supported_countries = ['AU']
       self.supported_cardtypes = [:visa, :master]
       self.homepage_url = 'http://www.eway.com.au/'
       self.display_name = 'eWAY'
-	    
-    	def initialize(options = {})
+      
+      def initialize(options = {})
         requires!(options, :login)
         @options = options
         super
-    	end
+      end
 
       # ewayCustomerEmail, ewayCustomerAddress, ewayCustomerPostcode
       def purchase(money, creditcard, options = {})
@@ -155,7 +165,62 @@ module ActiveMerchant #:nodoc:
     
         commit(money, post)
       end
-    
+  
+      def new_customer(options = {})
+        options = @options.merge(options)
+        
+        if options[:engine] == :managed
+          c = EwayManaged::Customer.new({}, options)
+        end
+      end
+
+      def create_customer(credit_card, customer, options = {})
+        options = @options.merge(options)
+
+        if options[:engine] == :managed
+          c = EwayManaged::Customer.new(customer, options)
+          c.credit_card = credit_card
+        end
+       
+       c.create(options)
+       return c
+      end
+
+      def update_customer(customer_id, credit_card, customer, options = {})
+        options = @options.merge(options)
+        customer[:id] = customer_id
+
+        if options[:engine] == :managed
+          c = EwayManaged::Customer.new(customer)
+          c.credit_card = credit_card
+        end
+
+        c.update(options)
+      end
+
+      def query_customer(customer_id)
+        if options[:engine] == :managed
+          EwayManaged::Customer.query(customer_id, options)
+        end
+      end
+
+      def query_payment(customer_id)
+        EwayManaged::Payment.query(customer_id, options)
+      end
+
+      def process_payment(money, customer_id, options)
+        options = @options.merge(options)
+        requires!(options, :order_id)
+        
+        p = EwayManaged::Payment.new
+        p.customer_id = customer_id
+        p.amount = amount((money * 100).to_i)
+        p.invoice_reference = options[:order_id]
+        p.invoice_description = options[:description]
+
+        p.process(options)
+      end
+
       private                       
       def add_creditcard(post, creditcard)
         post[:CardNumber]  = creditcard.number
@@ -205,7 +270,8 @@ module ActiveMerchant #:nodoc:
       def success?(response)
         response[:ewaytrxnstatus] == "True"
       end
-                                             
+
+                                    
       # Parse eway response xml into a convinient hash
       def parse(xml)
         #  "<?xml version=\"1.0\"?>".
