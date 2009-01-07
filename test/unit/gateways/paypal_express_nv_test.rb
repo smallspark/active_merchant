@@ -100,6 +100,24 @@ class PaypalExpressNvTest < Test::Unit::TestCase
     assert response.test?
   end
 
+  def test_purchase
+    @gateway.expects(:ssl_post).returns(successful_sale_response)
+    response = @gateway.purchase(300, :token => 'EC-6WS104951Y388951L', :payer_id => 'FWRVKNRRZ3WUC')
+    assert response.success?
+    assert response.complete?
+    assert_not_nil response.authorization
+    assert response.test?
+  end
+
+  def test_pending_purchase_is_not_complete
+    @gateway.expects(:ssl_post).returns(successful_pending_sale_response)
+    response = @gateway.purchase(300, :token => 'EC-6WS104951Y388951L', :payer_id => 'FWRVKNRRZ3WUC')
+    assert response.success?
+    assert !response.complete?
+    assert_not_nil response.authorization
+    assert response.test?
+  end
+
   def test_default_payflow_currency
     assert_equal 'USD', PayflowExpressNvGateway.default_currency
   end
@@ -181,5 +199,14 @@ class PaypalExpressNvTest < Test::Unit::TestCase
     resp << "&PAYMENTTYPE=instant&ORDERTIME=2006-08-22T20:16:05Z&AMT=10.00"
     resp << "&CURRENCYCODE=USD&FEEAMT=0.59&TAXAMT=0.00"
     resp << "&PAYMENTSTATUS=Completed&PENDINGREASON=None&REASONCODE=None"
+  end
+
+  def successful_pending_sale_response
+    resp = successful_response_fields
+    resp << "&TOKEN=EC-0E881823PA052770A"
+    resp << "&TRANSACTIONID=8SC56973LM923823H&TRANSACTIONTYPE=expresscheckout"
+    resp << "&PAYMENTTYPE=instant&ORDERTIME=2006-08-22T20:16:05Z&AMT=10.00"
+    resp << "&CURRENCYCODE=USD&FEEAMT=0.59&TAXAMT=0.00"
+    resp << "&PAYMENTSTATUS=Pending&PENDINGREASON=echeck&REASONCODE=None"
   end
 end

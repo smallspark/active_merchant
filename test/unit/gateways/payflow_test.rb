@@ -152,6 +152,19 @@ class PayflowTest < Test::Unit::TestCase
     assert response.test?
     assert_equal "R7960E739F80", response.authorization
   end
+
+  def test_successful_recurring_modify_action
+    @gateway.stubs(:ssl_post).returns(successful_recurring_modify_response)
+    
+    response = @gateway.recurring(0, nil, {:profile_id => 'RT0000000009', :email => 'test@test.com'})
+
+    assert_instance_of PayflowResponse, response
+    assert_success response
+    assert_equal 'RT0000000009', response.profile_id
+    assert response.test?
+    assert_equal "R7960E739F80", response.authorization
+    assert_equal "test@test.com", response.e_mail
+  end
   
   def test_recurring_profile_payment_history_inquiry
     @gateway.stubs(:ssl_post).returns(successful_payment_history_recurring_response)
@@ -201,6 +214,20 @@ class PayflowTest < Test::Unit::TestCase
   <Partner>paypal</Partner>
   <RPRef>R7960E739F80</RPRef>
   <Vendor>ActiveMerchant</Vendor>
+  <ProfileId>RT0000000009</ProfileId>
+</ResponseData>
+  XML
+  end
+
+  def successful_recurring_modify_response
+    <<-XML
+<ResponseData>
+  <Result>0</Result>
+  <Message>Approved</Message>
+  <Partner>paypal</Partner>
+  <RPRef>R7960E739F80</RPRef>
+  <Vendor>ActiveMerchant</Vendor>
+  <EMail>test@test.com</EMail>
   <ProfileId>RT0000000009</ProfileId>
 </ResponseData>
   XML

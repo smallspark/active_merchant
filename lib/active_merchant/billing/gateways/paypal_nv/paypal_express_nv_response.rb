@@ -21,6 +21,10 @@ module ActiveMerchant #:nodoc:
         @params['payer_country']
       end
 
+      def complete?
+        @params['paymentstatus'] == "Completed"
+      end
+
       def address
         {  'name'       => self.name,
            'company'    => @params['business'],
