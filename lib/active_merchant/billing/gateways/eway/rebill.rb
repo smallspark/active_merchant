@@ -356,16 +356,11 @@ module ActiveMerchant #:nodoc:
         case(interval)
         when :daily
           return 1
-        when :weekly
-        when :biweekly
-        when :quadweekly
+        when :weekly, :biweekly, :quadweekly
           return 2
-        when :monthly
-        when :bimonthly
-        when :quarterly
+        when :monthly, :bimonthly, :quarterly
           return 3
-        when :yearly
-        when :biyearly
+        when :yearly, :biyearly
           return 4
         end
       end
