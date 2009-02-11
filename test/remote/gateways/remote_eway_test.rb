@@ -40,6 +40,14 @@ class EwayTest < Test::Unit::TestCase
     assert_equal EwayGateway::MESSAGES["00"], response.message
   end
 
+  def test_purchase_success_without_address
+    assert response = @gateway.purchase(100, @credit_card_success, @params.except(:billing_address))
+    assert_equal '123456', response.authorization
+    assert_success response
+    assert response.test?
+    assert_equal EwayGateway::MESSAGES["00"], response.message
+  end
+
   def test_invalid_expiration_date
     @credit_card_success.year = 2005 
     assert response = @gateway.purchase(100, @credit_card_success, @params)
