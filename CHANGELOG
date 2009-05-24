@@ -1,5 +1,11 @@
 = ActiveMerchant CHANGELOG
 
+* Fix PSL gateway capturing [cody]
+* Fix failed Visa debit purchases with PSL gateway start date info is present [cody]
+* Support personal fixtures file on Windows [cody]
+* Clearer variable naming for BraintreeGateway#authorize [Jonathan S. Katz]
+* Fix brittle Authorize.net tests [cody]
+* Add support for Authorize.net duplicate window [Seamus Abshere]
 * Return transaction id for PayPal refunds [jxtps435]
 * Allow storage of e-checks with BraintreeGateway [jimiray]
 * Add test URL to PayJunction gateway [boomtowndesigngroup]

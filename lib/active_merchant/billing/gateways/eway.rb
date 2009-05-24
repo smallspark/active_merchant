@@ -238,6 +238,8 @@ module ActiveMerchant #:nodoc:
           post[:CustomerAddress]    = [ address[:address1], address[:address2], address[:city], address[:state], address[:country] ].compact.join(', ')
           post[:CustomerPostcode]   = address[:zip]
         end
+        post[:CustomerAddress]  ||= ''
+        post[:CustomerPostcode] ||= ''
       end
 
       def add_customer_data(post, options)
