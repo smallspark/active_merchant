@@ -7,7 +7,8 @@ module ActiveMerchant #:nodoc:
     module EwayManaged
       class ProxyBase < EwayBase::Proxy
         def wdsl
-          "https://www.eway.com.au/gateway/ManagedPaymentService/test/managedCreditCardPayment.asmx?WSDL"
+          return "https://www.eway.com.au/gateway/ManagedPaymentService/test/managedCreditCardPayment.asmx?WSDL" if ActiveMerchant::Billing::Base.gateway_mode == :test
+          return "https://www.eway.com.au/gateway/ManagedPaymentService/managedCreditCardPayment.asmx?WSDL" unless ActiveMerchant::Billing::Base.gateway_mode == :test
         end
 
         def header(eway_customer_id, username, password)
