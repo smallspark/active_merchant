@@ -141,7 +141,7 @@ module ActiveMerchant #:nodoc:
       
       self.money_format = :cents
       self.supported_countries = ['AU']
-      self.supported_cardtypes = [:visa, :master]
+      self.supported_cardtypes = [:visa, :master, :american_express]
       self.homepage_url = 'http://www.eway.com.au/'
       self.display_name = 'eWAY'
       
@@ -222,6 +222,10 @@ module ActiveMerchant #:nodoc:
         p.query(@options)
       end
 
+      def test?
+        @options[:test] || super
+      end
+      
       private                       
       def add_creditcard(post, creditcard)
         post[:CardNumber]  = creditcard.number
@@ -336,6 +340,7 @@ module ActiveMerchant #:nodoc:
           test ? TEST_URL : LIVE_URL
         end
       end
+      
     end
   end
 end
